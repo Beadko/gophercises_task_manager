@@ -2,14 +2,16 @@ package db
 
 import (
 	"encoding/binary"
+	"fmt"
 	"time"
 
 	"github.com/boltdb/bolt"
 )
 
 var (
-	taskBucket = []byte("tasks")
-	db         *bolt.DB
+	activeBucket    = []byte("active")
+	completedBucket = []byte("completed")
+	db              *bolt.DB
 )
 
 type Task struct {
@@ -24,7 +26,7 @@ func Init(dbpath string) error {
 		return err
 	}
 	return db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists(taskBucket)
+		_, err := tx.CreateBucketIfNotExists(activeBucket)
 		return err
 	})
 }
@@ -32,7 +34,7 @@ func Init(dbpath string) error {
 func CreateTask(t string) (int, error) {
 	var id int
 	err := db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket(taskBucket)
+		b := tx.Bucket(activeBucket)
 		id64, _ := b.NextSequence()
 		id = int(id64)
 		return b.Put(itob(id), []byte(t))
@@ -47,7 +49,7 @@ func CreateTask(t string) (int, error) {
 func AllTasks() ([]Task, error) {
 	var tasks []Task
 	err := db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket(taskBucket)
+		b := tx.Bucket(activeBucket)
 		c := b.Cursor()
 		for k, v := c.First(); k != nil; k, v = c.Next() {
 			tasks = append(tasks, Task{
@@ -65,8 +67,22 @@ func AllTasks() ([]Task, error) {
 
 func DeleteTask(key int) error {
 	return db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket(taskBucket)
+		b := tx.Bucket(activeBucket)
 		return b.Delete(itob(key))
+	})
+}
+
+func DoTask(key int) error {
+	return db.Update(func(tx *bolt.Tx) error {
+		a := tx.Bucket(activeBucket)
+		c := tx.Bucket(completedBucket)
+
+		task := a.Get(itob(key))
+		if task == nil {
+			return fmt.Errorf("Error: task not found")
+		}
+
+		return c.Put(itob(key), []byte(task))
 	})
 }
 
