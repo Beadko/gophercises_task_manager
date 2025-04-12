@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
+	"github.com/Beadko/gophercises_task_manager/db"
 	"github.com/spf13/cobra"
 )
 
@@ -11,7 +13,13 @@ var addCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Adds a task to your task list",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("Added \"%s\" to your task list.\n", strings.Join(args, " "))
+		t := strings.Join(args, " ")
+		k, err := db.CreateTask(t)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Something went wrong: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Added \"%d. %s\" to your task list.\n", k, t)
 	},
 }
 
