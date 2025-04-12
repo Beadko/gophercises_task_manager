@@ -74,6 +74,11 @@ func DeleteTask(key int) error {
 
 func DoTask(key int) error {
 	return db.Update(func(tx *bolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists(completedBucket)
+		if err != nil {
+			return nil
+		}
+
 		a := tx.Bucket(activeBucket)
 		c := tx.Bucket(completedBucket)
 
