@@ -15,8 +15,9 @@ var (
 )
 
 type Task struct {
-	Key   int
-	Value string
+	Key       int
+	Value     string
+	CreatedAt time.Time
 }
 
 func Init(dbpath string) error {
@@ -89,6 +90,31 @@ func DoTask(key int) error {
 
 		return c.Put(itob(key), []byte(task))
 	})
+}
+
+func CompletedTasks() ([]Task, error) {
+	var tasks []Task
+	err := db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(completedBucket)
+		c := b.Cursor()
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			t, err := time.Parse(time.RFC3339, string(v))
+			if err != nil {
+				return err
+			}
+			if t.After(time.Now().Truncate(24 * time.Hour)) {
+				tasks = append(tasks, Task{
+					Key:   btoi(k),
+					Value: string(v),
+				})
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return tasks, nil
 }
 
 func itob(v int) []byte {
