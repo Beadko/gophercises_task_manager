@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// doCmd represents the do command
+// rmCmd represents the remove task command
 var rmCmd = &cobra.Command{
 	Use:   "rm",
 	Short: "Deletes the task",

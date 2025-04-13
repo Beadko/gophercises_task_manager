@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// addCmd represent the add command
 var addCmd = &cobra.Command{
 	Use:   "add",
 	Short: "Adds a task to your task list",
