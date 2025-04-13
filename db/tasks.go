@@ -77,18 +77,27 @@ func DoTask(key int) error {
 	return db.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists(completedBucket)
 		if err != nil {
-			return nil
+			return err
 		}
 
 		a := tx.Bucket(activeBucket)
 		c := tx.Bucket(completedBucket)
 
-		task := a.Get(itob(key))
+		k := itob(key)
+
+		task := a.Get(k)
 		if task == nil {
 			return fmt.Errorf("Error: task not found")
 		}
 
-		return c.Put(itob(key), []byte(task))
+		if err = c.Put(k, []byte(task)); err != nil {
+			return err
+		}
+
+		if err = a.Delete(k); err != nil {
+			return err
+		}
+		return nil
 	})
 }
 
