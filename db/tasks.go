@@ -2,6 +2,7 @@ package db
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -15,9 +16,9 @@ var (
 )
 
 type Task struct {
-	Key       int
-	Value     string
-	CreatedAt time.Time
+	Key         int
+	Value       string
+	CompletedAt time.Time
 }
 
 func Init(dbpath string) error {
@@ -90,7 +91,16 @@ func DoTask(key int) error {
 			return fmt.Errorf("Error: task not found")
 		}
 
-		if err = c.Put(k, []byte(task)); err != nil {
+		cTask := Task{
+			Key:         key,
+			Value:       string(task),
+			CompletedAt: time.Now(),
+		}
+		taskData, err := json.Marshal(cTask)
+		if err != nil {
+			return err
+		}
+		if err = c.Put(k, taskData); err != nil {
 			return err
 		}
 
@@ -107,15 +117,13 @@ func CompletedTasks() ([]Task, error) {
 		b := tx.Bucket(completedBucket)
 		c := b.Cursor()
 		for k, v := c.First(); k != nil; k, v = c.Next() {
-			t, err := time.Parse(time.RFC3339, string(v))
-			if err != nil {
+			var task Task
+			if err := json.Unmarshal(v, &task); err != nil {
 				return err
 			}
-			if t.After(time.Now().Truncate(24 * time.Hour)) {
-				tasks = append(tasks, Task{
-					Key:   btoi(k),
-					Value: string(v),
-				})
+			task.Key = btoi(k)
+			if task.CompletedAt.After(time.Now().Local().Truncate(24 * time.Hour)) {
+				tasks = append(tasks, task)
 			}
 		}
 		return nil
